@@ -1,7 +1,6 @@
 <?php
 
-use App\Http\Controllers\api\userController;
-use Illuminate\Http\Request;
+use App\Http\Controllers\api\productsController;
 use Illuminate\Support\Facades\Route;
 
-Route::get("/user",[userController::class,"getUsers"]);
+Route::get("/products",[productsController::class,"getProducts"]);
