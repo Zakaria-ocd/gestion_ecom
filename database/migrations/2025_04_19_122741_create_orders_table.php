@@ -14,7 +14,7 @@ return new class extends Migration
             $table->string('status', 20)->nullable(false)
                 ->default('pending')
                 ->comment('Order status: pending, shipped, delivered');
-            $table->decimal('total_price', 10, 2);
+            // $table->decimal('total_price', 10, 2);
             $table->timestamp('created_at')->useCurrent();
         });
     }
