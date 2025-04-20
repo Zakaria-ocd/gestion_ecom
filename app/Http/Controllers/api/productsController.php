@@ -3,17 +3,15 @@
 namespace App\Http\Controllers\api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Products;
+use App\Models\Product;
 use Illuminate\Http\Request;
 
 class productsController extends Controller
 {
-    public function getProducts(){
-    $products=Products::all();
-    return response()->json([
-             "success" => true,
-            "message" => "Products list retrieved successfully",
-            "data" => $products
-    ],200);
+    public function index(){
+    $products=Product::all();
+    return response()->json(
+             $products
+    ,200);
    }
 }
