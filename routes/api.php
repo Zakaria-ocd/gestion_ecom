@@ -10,3 +10,7 @@ Route::get("/users",[usersController::class,"index"]);
 Route::get("/users/{limit}",[usersController::class,"showUsers"]);
 Route::get('/orders',[ordersController::class,'index']);
 Route::get('/orders/{limit}',[ordersController::class,'showOrders']);
+Route::get('/image/{filename}', [productsController::class, 'getImage']);
+Route::post('/uploadImages', [productsController::class, 'uploadImages']);
+Route::post('/createProduct', [productsController::class, 'storeProduct']);
+Route::get('/categories', [productsController::class, 'getCategories']);
