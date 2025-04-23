@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -14,7 +13,7 @@ class ordersController extends Controller
         ->select('order_id','username','orders.status',DB::raw('sum(order_items.price)As total_price'))
         ->join('order_items','orders.id','=','order_items.order_id')
         ->join('users','buyer_id','=','users.id')
-        ->groupBy('orders.id')
+        ->groupBy('orders.id', 'order_items.order_id', 'users.username', 'orders.status')
         ->get());
     }
     public function showOrders(Request $request){
@@ -22,7 +21,7 @@ class ordersController extends Controller
         ->select('order_id','username','orders.status',DB::raw('sum(order_items.price)As total_price'))
         ->join('order_items','orders.id','=','order_items.order_id')
         ->join('users','buyer_id','=','users.id')
-        ->groupBy('orders.id')
+        ->groupBy('orders.id', 'order_items.order_id', 'users.username', 'orders.status')
         ->limit($request->limit)
         ->get());
     }
