@@ -27,14 +27,5 @@ class usersController extends Controller
             return response($file, 200)->header('Content-Type', $mimeType);
         }
     }
-    public function showImageByemail(Request $request)
-    {
-        $filename = User::where('email',$request->email)
-        ->first()?->image;
-        if (Storage::exists("users/{$filename}")) {
-            $file = Storage::get("users/{$filename}");
-            $mimeType = Storage::mimeType("users/{$filename}");
-            return response($file, 200)->header('Content-Type', $mimeType);
-        }
-    }
+    
 }
