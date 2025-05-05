@@ -13,8 +13,8 @@ return new class extends Migration
             $table->foreignId('product_id')->constrained()->onDelete('cascade');
             $table->foreignId('option_value_id')->constrained('option_values')->onDelete('cascade');
             $table->unique(['product_id', 'option_value_id']);
-            $table->decimal('price', 10, 2)->nullable();
-            $table->integer('quantity')->nullable();
+            $table->decimal('price', 10, 2);
+            $table->integer('quantity');
             $table->timestamps();
         });
     }
