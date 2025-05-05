@@ -10,10 +10,14 @@ use Illuminate\Support\Facades\Storage;
 
 class productImagesController extends Controller
 {
-    public function show(Request $request)
+    public function productImages(Request $request)
     {
-        $filename = ProductImage::find($request->imageId)?->image_url;
+        $images = ProductImage::where('product_id', $request->productId)->pluck('image_url');
 
+        return response()->json($images);
+    }
+    public function show($filename)
+    {
         if (Storage::exists("products/{$filename}")) {
             $file = Storage::get("products/{$filename}");
             $mimeType = Storage::mimeType("products/{$filename}");
@@ -23,31 +27,45 @@ class productImagesController extends Controller
     }
     public function store(Request $request)
     {
-        $request->validate([
-            'images' => 'required|array',
-            'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
+        $validated = $request->validate([
             'product_id' => 'required|exists:products,id',
+            'images' => 'required|array|max:10',
+            'images.*' => [
+                'image',
+                'mimes:jpeg,jpg,avif,png,webp',
+                'max:5120'
+            ],
         ]);
 
-        $product_id = $request->input('product_id');
-        $imageInfos = [];
+        try {
+            $uploadedImages = [];
+            
+            foreach ($request->file('images') as $image) {
+                $path = $image->store('products');
+                $filename = basename($path);
+                
+                $imageRecord = ProductImage::create([
+                    'product_id' => $validated['product_id'],
+                    'image_url' => $filename,
+                ]);
 
-        foreach ($request->file('images') as $image) {
-            $path = $image->store('products');
-            $filename = basename($path);
+                $uploadedImages[] = [
+                    'id' => $imageRecord->id,
+                    'url' => asset(Storage::url($path)),
+                ];
+            }
 
-            $imageInfo = [
-                'product_id' => $product_id,
-                'image_url' => $filename,
-            ];
+            return response()->json([
+                'success' => true,
+                'message' => 'Images uploaded successfully',
+                'data' => $uploadedImages
+            ], 201);
 
-            DB::table('product_images')->insert($imageInfo);
-
-            $imageInfos[] = [
-                'url' => $filename,
-            ];
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Image upload failed: ' . $e->getMessage()
+            ], 500);
         }
-
-        return response()->json(['images' => $imageInfos], 200);
     }
 }
