@@ -11,6 +11,8 @@ return new class extends Migration
         Schema::create('option_values', function (Blueprint $table) {
             $table->id();
             $table->string('value', 255); // e.g., "XL", "Blue"
+            $table->decimal( 'price',  10, 2);
+            $table->integer('quantity');
             $table->foreignId('option_id')->constrained('options')->onDelete('cascade');
             $table->timestamp('created_at')->useCurrent();
         });
