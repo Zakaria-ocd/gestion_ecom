@@ -32,7 +32,6 @@ class productsController extends Controller
             'options.*.values.*.quantity' => 'required_with:options|integer|min:1',
         ]);
 
-        DB::beginTransaction();
         try {
             $product = Product::create([
                 'name' => $request->name,
@@ -44,29 +43,9 @@ class productsController extends Controller
                 'quantity' => $request->has('options') ? null : $request->quantity,
             ]);
 
-            if ($request->has('options')) {
-                foreach ($request->options as $option) {
-                    foreach ($option['values'] as $value) {
-                        ProductOption::create([
-                            'product_id' => $product->id,
-                            'option_value_id' => $value['option_value_id'],
-                            'price' => $value['price'],
-                            'quantity' => $value['quantity'],
-                        ]);
-                    }
-                }
-            }
-
-            DB::commit();
-            return response()->json($product->id, 201);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'error' => $e->getMessage()
-            ], 500);
-        }
+            
     }
+}
     public function getCategories()
     {
         return response()->json(\App\Models\Category::select('id','name')->get());
