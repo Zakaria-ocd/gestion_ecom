@@ -24,7 +24,26 @@ Route::get('products/{product}/choices', [ProductChoiceController::class, 'index
 Route::post('products/{product}/choices', [ProductChoiceController::class, 'store']);
 Route::put('products/{product}/choices/{choice}', [ProductChoiceController::class, 'update']);
 Route::delete('products/{product}/choices/{choice}', [ProductChoiceController::class, 'destroy']);
+Route::get("/showProducts",[productsController::class,"getProducts"]);
+Route::get("/productDefaultPrice/{product_id}",[productsController::class,"getProductDefaultPrice"]);
+Route::get("/productImage/{product_id}",[productsController::class,"getProductImage"]);
+Route::get("/productOptions/{product_id}",[productsController::class,"getProductOptions"]);
+Route::get("/getProductChoices/{product_id}",[productsController::class,"getProductChoices"]);
 
+Route::apiResource('products', productsController::class);
+
+Route::apiResource('types', TypeController::class);
+
+Route::apiResource('types.values', TypeValueController::class);
+
+Route::get('available-choices', [AvailableChoicesController::class, 'index']);
+
+Route::get('products/{product}/choices', [ProductChoiceController::class, 'index']);
+Route::post('products/{product}/choices', [ProductChoiceController::class, 'store']);
+Route::put('products/{product}/choices/{choice}', [ProductChoiceController::class, 'update']);
+Route::delete('products/{product}/choices/{choice}', [ProductChoiceController::class, 'destroy']);
+
+Route::get("/users",[usersController::class,"index"]);
 Route::get("/users",[usersController::class,"index"]);
 Route::get("/users",[usersController::class,"index"])->middleware(['auth:sanctum']);
 Route::get("/users/{limit}",[usersController::class,"showUsers"]);
