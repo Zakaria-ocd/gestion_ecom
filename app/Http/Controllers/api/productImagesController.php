@@ -18,11 +18,24 @@ class productImagesController extends Controller
     }
     public function show($filename)
     {
-        if (Storage::exists("products/{$filename}")) {
+        $isExists = !Storage::exists("products/{$filename}");
+        if ($isExists) {
+            return response()->json([
+                'error' => 'Image not found'
+            ], 404);
+        }
+
+        try {
             $file = Storage::get("products/{$filename}");
             $mimeType = Storage::mimeType("products/{$filename}");
+            
+            return response($file, 200)
+                ->header('Content-Type', $mimeType);
 
-            return response($file, 200)->header('Content-Type', $mimeType);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Image not found'
+            ], 500);
         }
     }
     public function store(Request $request)

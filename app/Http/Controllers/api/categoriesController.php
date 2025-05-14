@@ -13,4 +13,10 @@ class categoriesController extends Controller
         $categories = Category::all();
         return response()->json(['data' => $categories]);
     }
+
+    public function show(Request $request)
+    {
+        $category = Category::find($request->id);
+        return response()->json(['data' => $category]);
+    }
 }

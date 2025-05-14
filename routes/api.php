@@ -44,7 +44,7 @@ Route::put('products/{product}/choices/{choice}', [ProductChoiceController::clas
 Route::delete('products/{product}/choices/{choice}', [ProductChoiceController::class, 'destroy']);
 
 Route::get("/users",[usersController::class,"index"]);
-Route::get("/users",[usersController::class,"index"]);
+Route::get("/users/{id}",[usersController::class,"show"]);
 Route::get("/users",[usersController::class,"index"])->middleware(['auth:sanctum']);
 Route::get("/users/{limit}",[usersController::class,"showUsers"]);
 Route::get("/users/image/{id}",[usersController::class,"showImage"]);
@@ -54,6 +54,7 @@ Route::post('/admin/checkAuth',[authAdminController::class,"checkAuth"])->middle
 Route::post('/admin/logout',[authAdminController::class,"logout"])->middleware(['auth:sanctum']);
 
 Route::get('/categories', [categoriesController::class, 'index']);
+Route::get('/categories/{id}', [categoriesController::class, 'show']);
 
 Route::get('/image/{filename}', [productImagesController::class, 'show']);
 Route::get('/productImages/{productId}', [productImagesController::class, 'productImages']);

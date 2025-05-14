@@ -13,6 +13,10 @@ class usersController extends Controller
 
         return response()->json(User::all());
     }
+    public function show(Request $request){
+
+        return response()->json(User::where('id', $request->id)->first());
+    }
     public function showUsers(Request $request){
 
         return response()->json(User::limit($request->limit)->get());

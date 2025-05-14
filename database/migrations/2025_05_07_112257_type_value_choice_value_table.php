@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('type_value_id')->constrained()->onDelete('cascade');
             $table->foreignId('choice_value_id')->constrained('choice_values')->onDelete('cascade');
+            $table->string('colorCode')->nullable()->after('choice_value_id');
             $table->timestamps();
         });
     }
