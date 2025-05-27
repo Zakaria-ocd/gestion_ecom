@@ -5,24 +5,24 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class CartItem extends Model
+class OrderItem extends Model
 {
     use HasFactory;
     
-    protected $fillable = ['cart_id', 'product_id', 'choice_value_id', 'quantity', 'price'];
+    protected $fillable = ['order_id', 'product_id', 'choice_value_id', 'quantity', 'price'];
     
     public $timestamps = false;
 
     /**
-     * Get the cart that owns the item.
+     * Get the order that owns the item.
      */
-    public function cart()
+    public function order()
     {
-        return $this->belongsTo(Cart::class);
+        return $this->belongsTo(Order::class);
     }
 
     /**
-     * Get the product associated with the cart item.
+     * Get the product for this order item.
      */
     public function product()
     {
@@ -30,10 +30,10 @@ class CartItem extends Model
     }
 
     /**
-     * Get the choice value associated with the cart item.
+     * Get the choice value associated with the order item.
      */
     public function choiceValue()
     {
         return $this->belongsTo(ChoiceValue::class);
     }
-}
+} 
