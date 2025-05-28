@@ -16,15 +16,30 @@ class productImagesController extends Controller
 
         return response()->json($images);
     }
+    
     public function show($filename)
     {
-        if (Storage::exists("products/{$filename}")) {
+        $isExists = !Storage::exists("products/{$filename}");
+        if ($isExists) {
+            return response()->json([
+                'error' => 'Image not found'
+            ], 404);
+        }
+
+        try {
             $file = Storage::get("products/{$filename}");
             $mimeType = Storage::mimeType("products/{$filename}");
+            
+            return response($file, 200)
+                ->header('Content-Type', $mimeType);
 
-            return response($file, 200)->header('Content-Type', $mimeType);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Image not found'
+            ], 500);
         }
     }
+    
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -41,6 +56,7 @@ class productImagesController extends Controller
             $uploadedImages = [];
             
             foreach ($request->file('images') as $image) {
+                // Store in private directory instead of public
                 $path = $image->store('products');
                 $filename = basename($path);
                 
@@ -51,7 +67,7 @@ class productImagesController extends Controller
 
                 $uploadedImages[] = [
                     'id' => $imageRecord->id,
-                    'url' => asset(Storage::url($path)),
+                    'url' => url('/api/image/' . $filename),
                 ];
             }
 
@@ -67,5 +83,32 @@ class productImagesController extends Controller
                 'message' => 'Image upload failed: ' . $e->getMessage()
             ], 500);
         }
+    }
+    
+    // Add the method to retrieve product image
+    public function getProductImage(Request $request)
+    {
+        $filename = DB::table('products')
+            ->select("product_images.image_url")
+            ->join('product_images', 'product_images.product_id', '=', 'products.id')
+            ->where("products.id", '=', $request->product_id)
+            ->first();
+            
+        if (!$filename) {
+            return response()->json([
+                'error' => 'Image not found'
+            ], 404);
+        }
+        
+        $filename = $filename->image_url;
+        if (Storage::exists("products/{$filename}")) {
+            $file = Storage::get("products/{$filename}");
+            $mimeType = Storage::mimeType("products/{$filename}");
+            return response($file, 200)->header('Content-Type', $mimeType);
+        }
+        
+        return response()->json([
+            'error' => 'Image not found'
+        ], 404);
     }
 }

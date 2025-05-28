@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('email', 100)->unique();
             $table->string('role', 20)->nullable(false)->default('buyer')
                 ->comment('User role: buyer, seller, admin');
-            $table->string("image",200);
+            $table->string("image",200)->nullable();
             $table->timestamp('created_at')->useCurrent();
         });
 

@@ -83,19 +83,28 @@ class productsController extends Controller
         );
     }
     public function getProductImage(Request $request){
-
-        $filename =DB::table('products')
+        $filename = DB::table('products')
         ->select("product_images.image_url")
         ->join('product_images','product_images.product_id','=','products.id')
         ->where("products.id",'=',$request->product_id)
         ->first();
-        $filename=$filename->image_url;
+        
+        if (!$filename) {
+            return response()->json([
+                'error' => 'Image not found'
+            ], 404);
+        }
+        
+        $filename = $filename->image_url;
         if (Storage::exists("products/{$filename}")) {
             $file = Storage::get("products/{$filename}");
             $mimeType = Storage::mimeType("products/{$filename}");
             return response($file, 200)->header('Content-Type', $mimeType);
         }
-    
+        
+        return response()->json([
+            'error' => 'Image not found'
+        ], 404);
     }
     public function getProductOptions(Request $request){
         return response()->json(

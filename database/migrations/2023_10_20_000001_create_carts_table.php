@@ -11,11 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('type_value_choice_value', function (Blueprint $table) {
+        Schema::create('carts', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('type_value_id')->constrained()->onDelete('cascade');
-            $table->foreignId('choice_value_id')->constrained('choice_values')->onDelete('cascade');
-            $table->string('colorCode')->nullable()->after('choice_value_id');
+            $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('cascade');
+            $table->string('session_id')->nullable();
             $table->timestamps();
         });
     }
@@ -25,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('type_value_choice_value');
+        Schema::dropIfExists('carts');
     }
-};
+}; 

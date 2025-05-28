@@ -19,11 +19,14 @@ class ProductChoiceController extends Controller
         ->map(function ($choice) {
             $typeValuePairs = [];
             foreach ($choice->choiceValue->typeValues as $typeValue) {
+                $colorCode = $typeValue->pivot->colorCode ?? $typeValue->colorCode;
+                
                 $typeValuePairs[] = [
                     'typeId' => $typeValue->type->id,
                     'typeName' => $typeValue->type->name,
                     'valueId' => $typeValue->id,
                     'value' => $typeValue->value,
+                    'colorCode' => $colorCode,
                 ];
             }
             
@@ -44,6 +47,7 @@ class ProductChoiceController extends Controller
             'typeValuePairs' => 'required|array',
             'typeValuePairs.*.typeId' => 'required|exists:types,id',
             'typeValuePairs.*.valueId' => 'required|exists:type_values,id',
+            'typeValuePairs.*.colorCode' => 'nullable|string|max:7',
             'price' => 'required|numeric|min:0',
             'quantity' => 'required|integer|min:1',
         ]);
@@ -60,7 +64,9 @@ class ProductChoiceController extends Controller
             
             foreach ($request->typeValuePairs as $pair) {
                 $typeValue = TypeValue::findOrFail($pair['valueId']);
-                $choiceValue->typeValues()->attach($typeValue->id);
+                $choiceValue->typeValues()->attach($typeValue->id, [
+                    'colorCode' => $pair['colorCode'] ?? null
+                ]);
             }
             
             $choice = Choice::create([
