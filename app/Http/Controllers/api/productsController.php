@@ -136,5 +136,125 @@ class productsController extends Controller
             ->get()
         );
     }
-
+    public function filterProducts(Request $request) {
+        
+        $query = DB::table('products')->select('products.*');
+        
+        
+        $query->leftJoin('choices', 'choices.product_id', '=', 'products.id')
+              ->leftJoin('choice_values', 'choice_values.id', '=', 'choices.choice_values_id');
+              
+        
+        if ($request->has('colors') || $request->has('sizes')) {
+            $query->leftJoin('type_value_choice_value', 'type_value_choice_value.choice_value_id', '=', 'choice_values.id')
+                  ->leftJoin('type_values', 'type_values.id', '=', 'type_value_choice_value.type_value_id')
+                  ->leftJoin('types', 'types.id', '=', 'type_values.type_id');
+        }
+        
+        
+        if ($request->has('categories') && !empty($request->categories)) {
+            $categories = explode(',', $request->categories);
+            $query->whereIn('products.category_id', $categories);
+        }
+        
+        
+        if ($request->has('min_price') && is_numeric($request->min_price)) {
+            $query->where('choice_values.price', '>=', $request->min_price);
+        }
+        
+        
+        if ($request->has('min_rating') && is_numeric($request->min_rating)) {
+            $query->where('products.rating', '>=', $request->min_rating);
+        }
+        
+        
+        if ($request->has('colors') && !empty($request->colors)) {
+            $colorValues = explode(',', $request->colors);
+            $colorCount = count($colorValues);
+            
+            $query->whereIn('products.id', function($subquery) use ($colorValues) {
+                $subquery->select('products.id')
+                    ->from('products')
+                    ->join('choices', 'choices.product_id', '=', 'products.id')
+                    ->join('choice_values', 'choice_values.id', '=', 'choices.choice_values_id')
+                    ->join('type_value_choice_value', 'type_value_choice_value.choice_value_id', '=', 'choice_values.id')
+                    ->join('type_values', 'type_values.id', '=', 'type_value_choice_value.type_value_id')
+                    ->join('types', 'types.id', '=', 'type_values.type_id')
+                    ->where('types.name', 'color')
+                    ->whereIn('type_values.id', $colorValues);
+            });
+        }
+        
+        
+        if ($request->has('sizes') && !empty($request->sizes)) {
+            $sizeValues = explode(',', $request->sizes);
+            $sizeCount = count($sizeValues);
+            
+            $query->whereIn('products.id', function($subquery) use ($sizeValues) {
+                $subquery->select('products.id')
+                    ->from('products')
+                    ->join('choices', 'choices.product_id', '=', 'products.id')
+                    ->join('choice_values', 'choice_values.id', '=', 'choices.choice_values_id')
+                    ->join('type_value_choice_value', 'type_value_choice_value.choice_value_id', '=', 'choice_values.id')
+                    ->join('type_values', 'type_values.id', '=', 'type_value_choice_value.type_value_id')
+                    ->join('types', 'types.id', '=', 'type_values.type_id')
+                    ->where('types.name', 'size')
+                    ->whereIn('type_values.id', $sizeValues);
+            });
+        }
+        
+        
+        $query->distinct();
+        
+        
+        if ($request->has('sort')) {
+            switch ($request->sort) {
+                case 'price_asc':
+                    $query->orderBy('choice_values.price', 'asc');
+                    break;
+                case 'price_desc':
+                    $query->orderBy('choice_values.price', 'desc');
+                    break;
+                case 'rating':
+                    $query->orderBy('products.rating', 'desc');
+                    break;
+                case 'popular':
+                    $query->orderBy('products.sales', 'desc');
+                    break;
+                case 'newest':
+                default:
+                    $query->orderBy('products.created_at', 'desc');
+                    break;
+            }
+        } else {
+            
+            $query->orderBy('products.id', 'desc');
+        }
+        
+        
+        $perPage = $request->has('per_page') ? intval($request->per_page) : 24;
+        $page = $request->has('page') ? intval($request->page) : 1;
+        
+        
+        $countQuery = clone $query;
+        
+        
+        
+        $total = $countQuery->count('products.id');
+        
+        
+        $products = $query->skip(($page - 1) * $perPage)
+                           ->take($perPage)
+                           ->get();
+        
+        return response()->json([
+            'data' => $products,
+            'meta' => [
+                'total' => $total,
+                'per_page' => $perPage,
+                'current_page' => $page,
+                'last_page' => ceil($total / $perPage)
+            ]
+        ]);
+    }
 }

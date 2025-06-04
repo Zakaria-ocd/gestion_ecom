@@ -32,6 +32,7 @@ class ProductChoiceController extends Controller
             
             return [
                 'id' => $choice->id,
+                'choice_value_id' => $choice->choice_values_id,
                 'typeValuePairs' => $typeValuePairs,
                 'price' => (float) $choice->choiceValue->price,
                 'quantity' => (int) $choice->choiceValue->quantity,
@@ -83,6 +84,7 @@ class ProductChoiceController extends Controller
         return response()->json([
             'data' => [
                 'id' => $result['choice']->id,
+                'choice_value_id' => $result['choice']->choice_values_id,
                 'typeValuePairs' => $request->typeValuePairs,
                 'price' => (float) $result['choiceValue']->price,
                 'quantity' => (int) $result['choiceValue']->quantity,
@@ -122,6 +124,7 @@ class ProductChoiceController extends Controller
         return response()->json([
             'data' => [
                 'id' => $choice->id,
+                'choice_value_id' => $choice->choice_values_id,
                 'typeValuePairs' => $request->typeValuePairs,
                 'price' => (float) $result->price,
                 'quantity' => (int) $result->quantity,

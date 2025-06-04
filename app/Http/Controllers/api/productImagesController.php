@@ -56,7 +56,7 @@ class productImagesController extends Controller
             $uploadedImages = [];
             
             foreach ($request->file('images') as $image) {
-                // Store in private directory instead of public
+                
                 $path = $image->store('products');
                 $filename = basename($path);
                 
@@ -85,7 +85,7 @@ class productImagesController extends Controller
         }
     }
     
-    // Add the method to retrieve product image
+    
     public function getProductImage(Request $request)
     {
         $filename = DB::table('products')

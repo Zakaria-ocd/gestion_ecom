@@ -29,22 +29,22 @@ class MoveImagesToPrivate extends Command
     {
         $this->info('Starting to move images from public to private storage...');
         
-        // Create private directory if it doesn't exist
+        
         if (!Storage::exists('private/products')) {
             Storage::makeDirectory('private/products');
             $this->info('Created private/products directory');
         }
         
-        // Get all product images
+        
         $images = ProductImage::all();
         $count = 0;
         
         foreach ($images as $image) {
             $filename = $image->image_url;
             
-            // Check if file exists in public storage
+            
             if (Storage::exists("products/{$filename}")) {
-                // Copy to private storage
+                
                 Storage::copy("products/{$filename}", "private/products/{$filename}");
                 $count++;
                 

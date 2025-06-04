@@ -25,7 +25,7 @@ class usersController extends Controller
     }
     public function updateUser(Request $request)
     {
-        // Validate the incoming request
+        
         $validator = Validator::make($request->all(), [
             'id' => 'required|exists:users,id',
             'username' => 'required|string|max:50',
@@ -42,7 +42,7 @@ class usersController extends Controller
         }
 
         try {
-            // Find the user to update
+            
             $user = User::find($request->id);
             
             if (!$user) {
@@ -51,17 +51,17 @@ class usersController extends Controller
                 ], 404);
             }
             
-            // Check if we need to verify password (for password change or email change)
+            
             if ($request->filled('current_password')) {
-                // Try to verify with Hash::check first
+                
                 $passwordMatches = false;
                 
                 try {
                     $passwordMatches = Hash::check($request->current_password, $user->password);
                 } catch (\Exception $e) {
-                    // If Hash::check fails, it might be using a different hashing algorithm
-                    // For this update, we'll just bypass the check and update the password
-                    // to use Bcrypt going forward
+                    
+                    
+                    
                     $passwordMatches = true;
                 }
                 
@@ -72,7 +72,7 @@ class usersController extends Controller
                 }
             } 
             
-            // Check email uniqueness (but skip if it's the same as current email)
+            
             if ($request->email !== $user->email) {
                 $emailExists = User::where('email', $request->email)
                     ->where('id', '!=', $user->id)
@@ -85,11 +85,11 @@ class usersController extends Controller
                 }
             }
             
-            // Update the user fields
+            
             $user->username = $request->username;
             $user->email = $request->email;
             
-            // Update password if provided
+            
             if ($request->filled('password')) {
                 $user->password = Hash::make($request->password);
             }
@@ -161,19 +161,19 @@ class usersController extends Controller
                 'user_id' => 'required|exists:users,id'
             ]);
 
-            // Get the user
+            
             $user = User::findOrFail($validated['user_id']);
             
-            // Delete old image if exists
+            
             if ($user->image && Storage::exists("users/{$user->image}")) {
                 Storage::delete("users/{$user->image}");
             }
 
-            // Store new image
+            
             $path = $request->file('image')->store('users');
             $filename = basename($path);
             
-            // Update user record
+            
             $user->image = $filename;
             $user->save();
 

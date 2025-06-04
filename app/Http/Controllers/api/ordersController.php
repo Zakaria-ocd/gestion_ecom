@@ -20,14 +20,28 @@ class ordersController extends Controller
      */
     public function index()
     {
-        return response()->json(DB::table('orders')
-            ->select('orders.id as order_id', 'user_id',
-                DB::raw('count(product_id) as products_total'), 'username', 'role', 'email', 'orders.status',
-                DB::raw('sum(order_items.price) As total_price'))
-            ->join('users', 'user_id', '=', 'users.id')
-            ->join('order_items', 'order_items.order_id', '=', 'orders.id')
-            ->groupBy('orders.id', 'users.username', 'orders.status', 'users.role', 'users.email', 'user_id')
-        ->get());
+        $orders = Order::with(['items.product', 'items.choiceValue.typeValues.type'])
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($order) {
+                $order->items = $order->items->map(function ($item) {
+                    $choiceDetails = [];
+                    if ($item->choiceValue) {
+                        foreach ($item->choiceValue->typeValues as $typeValue) {
+                            $choiceDetails[] = [
+                                'type' => $typeValue->type->name,
+                                'value' => $typeValue->value,
+                                'colorCode' => $typeValue->pivot->colorCode
+                            ];
+                        }
+                    }
+                    $item->choiceDetails = $choiceDetails;
+                    return $item;
+                });
+                return $order;
+            });
+        
+        return response()->json($orders);
     }
 
     /**
@@ -41,7 +55,7 @@ class ordersController extends Controller
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($order) {
-                // Process each order to format choice value information
+                
                 $order->items = $order->items->map(function ($item) {
                     $choiceDetails = [];
                     
@@ -70,7 +84,7 @@ class ordersController extends Controller
      */
     public function getUserOrdersById($user_id)
     {
-        // Check if user exists
+        
         $user = \App\Models\User::find($user_id);
         if (!$user) {
             return response()->json([
@@ -84,13 +98,13 @@ class ordersController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->get();
                 
-            // Handle case where user has no orders
+            
             if ($orders->isEmpty()) {
-                return response()->json([], 200); // Return empty array with 200 OK status
+                return response()->json([], 200); 
             }
             
             $orders = $orders->map(function ($order) {
-                // Process each order to format choice value information
+                
                 $order->items = $order->items->map(function ($item) {
                     $choiceDetails = [];
                     
@@ -113,10 +127,10 @@ class ordersController extends Controller
                 
             return response()->json($orders);
         } catch (\Exception $e) {
-            // Log the error for debugging
+            
             Log::error('Error fetching user orders: ' . $e->getMessage());
             
-            // Check if it's a column not found error
+            
             if (strpos($e->getMessage(), 'Unknown column') !== false) {
                 return response()->json([
                     'message' => 'Database schema error: ' . $e->getMessage()
@@ -150,7 +164,7 @@ class ordersController extends Controller
         
         $user = $request->user();
         
-        // Check if user has items in cart
+        
         $cart = Cart::where('user_id', $user->id)->first();
         
         if (!$cart) {
@@ -170,7 +184,7 @@ class ordersController extends Controller
         DB::beginTransaction();
         
         try {
-            // Create order
+            
             $order = Order::create([
                 'user_id' => $user->id,
                 'total_price' => $request->total_price,
@@ -180,7 +194,7 @@ class ordersController extends Controller
                 'payment_method' => $request->payment_method,
             ]);
             
-            // Create order items from cart items
+            
             foreach ($cartItems as $cartItem) {
                 OrderItem::create([
                     'order_id' => $order->id,
@@ -191,7 +205,7 @@ class ordersController extends Controller
                 ]);
             }
             
-            // Clear user's cart
+            
             CartItem::where('cart_id', $cart->id)->delete();
             
             DB::commit();
@@ -213,12 +227,10 @@ class ordersController extends Controller
     /**
      * Display the specified order.
      */
-    public function show(Request $request, $id)
+    public function show($id)
     {
-        $user = $request->user();
         $order = Order::with(['items.product', 'items.choiceValue.typeValues.type'])
             ->where('id', $id)
-            ->where('user_id', $user->id)
             ->first();
             
         if (!$order) {
@@ -227,7 +239,7 @@ class ordersController extends Controller
             ], 404);
         }
         
-        // Process choice value information
+        
         $order->items = $order->items->map(function ($item) {
             $choiceDetails = [];
             
@@ -245,9 +257,7 @@ class ordersController extends Controller
             return $item;
         });
         
-        return response()->json([
-            'order' => $order
-        ]);
+        return response()->json($order);
     }
 
     /**
@@ -262,5 +272,19 @@ class ordersController extends Controller
         ->groupBy('orders.id', 'order_items.order_id', 'users.username', 'orders.status')
             ->limit($limit)
         ->get());
+    }
+
+    public function destroy($id)
+    {
+        $order = Order::find($id);
+        if (!$order) {
+            return response()->json([
+                'message' => 'Order not found'
+            ], 404);
+        }
+        $order->delete();
+        return response()->json([
+            'message' => 'Order deleted successfully'
+        ], 200);
     }
 }

@@ -4,18 +4,45 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class TypeValue extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['value', 'type_id'];
-    public function type()
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = ['value', 'colorCode', 'type_id'];
+
+    /**
+     * The relationships that should be eager loaded by default.
+     *
+     * @var array
+     */
+    protected $with = ['type'];
+
+    /**
+     * Get the type that owns this value
+     *
+     * @return BelongsTo
+     */
+    public function type(): BelongsTo
     {
         return $this->belongsTo(Type::class);
     }
-    public function choiceValues()
+
+    /**
+     * Get the choice values that belong to this type value
+     *
+     * @return BelongsToMany
+     */
+    public function choiceValues(): BelongsToMany
     {
-        return $this->belongsToMany(ChoiceValue::class, 'type_value_choice_value');
+        return $this->belongsToMany(ChoiceValue::class, 'type_value_choice_value')
+            ->withPivot('colorCode');
     }
 }
