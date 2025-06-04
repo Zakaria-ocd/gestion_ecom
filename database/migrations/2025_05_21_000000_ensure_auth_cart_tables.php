@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Create carts table if it doesn't exist
+        
         if (!Schema::hasTable('carts')) {
             Schema::create('carts', function (Blueprint $table) {
                 $table->id();
@@ -20,7 +20,7 @@ return new class extends Migration
             });
         }
         
-        // Create cart_items table if it doesn't exist
+        
         if (!Schema::hasTable('cart_items')) {
             Schema::create('cart_items', function (Blueprint $table) {
                 $table->id();
@@ -32,7 +32,7 @@ return new class extends Migration
             });
         }
         
-        // Create orders table if it doesn't exist
+        
         if (!Schema::hasTable('orders')) {
             Schema::create('orders', function (Blueprint $table) {
                 $table->id();
@@ -48,7 +48,7 @@ return new class extends Migration
             });
         }
         
-        // Create order_items table if it doesn't exist
+        
         if (!Schema::hasTable('order_items')) {
             Schema::create('order_items', function (Blueprint $table) {
                 $table->id();
@@ -66,6 +66,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // We don't want to drop these tables on rollback if they were already there
+        
     }
 }; 

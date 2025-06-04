@@ -15,7 +15,7 @@ class EnsureBuyerRole
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Check if user is authenticated and has buyer role
+        
         if (!$request->user() || $request->user()->role !== 'buyer') {
             return response()->json([
                 'message' => 'Access denied. Only buyers can access this resource.'

@@ -53,6 +53,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/admin/logout',[authAdminController::class,"logout"]);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
+    Route::get('/admin/dashboard/stats', [authAdminController::class, 'dashboardStats']);
 
     Route::get('/cart', [CartController::class, 'index']);
     Route::post('/cart/add', [CartController::class, 'addToCart']);
@@ -64,12 +65,22 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/orders', [ordersController::class, 'store']);
     Route::get('/orders/{limit}/limit', [ordersController::class, 'userOrders']);
     Route::get('/orders/{id}', [ordersController::class, 'show']);
+    Route::delete('/orders/{id}', [ordersController::class, 'destroy']);
 });
 
 Route::get('/categories', [categoriesController::class, 'index']);
 Route::get('/categories/{id}', [categoriesController::class, 'show']);
 Route::get('/categories/{id}/products', [categoriesController::class, 'products']);
+Route::post('/categories', [categoriesController::class, 'store']);
+Route::put('/categories', [categoriesController::class, 'update']);
+Route::delete('/categories', [categoriesController::class, 'destroy']);
 
 Route::get('/image/{filename}', [productImagesController::class, 'show']);
 Route::get('/productImages/{productId}', [productImagesController::class, 'productImages']);
 Route::post('/uploadImages', [productImagesController::class, 'store']);
+
+
+Route::get('/filter-products', [App\Http\Controllers\Api\productsController::class, 'filterProducts']);
+
+
+Route::get('/available-choices', [App\Http\Controllers\Api\AvailableChoicesController::class, 'index']);

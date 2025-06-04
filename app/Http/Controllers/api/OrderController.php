@@ -19,7 +19,7 @@ class OrderController extends Controller
     {
         $user = $request->user();
         
-        // Validate shipping info
+        
         $request->validate([
             'address' => 'required|string',
             'city' => 'required|string',
@@ -29,7 +29,7 @@ class OrderController extends Controller
             'payment_method' => 'nullable|in:cash_on_delivery,card'
         ]);
         
-        // Get user's cart
+        
         $cart = Cart::where('user_id', $user->id)->first();
         
         if (!$cart || $cart->items()->count() === 0) {
@@ -39,7 +39,7 @@ class OrderController extends Controller
             ], 400);
         }
         
-        // Calculate total
+        
         $total = 0;
         foreach ($cart->items as $item) {
             $total += $item->price * $item->quantity;
@@ -48,7 +48,7 @@ class OrderController extends Controller
         DB::beginTransaction();
         
         try {
-            // Create order
+            
             $order = Order::create([
                 'user_id' => $user->id,
                 'total_amount' => $total,
@@ -62,7 +62,7 @@ class OrderController extends Controller
                 'notes' => $request->notes
             ]);
             
-            // Create order items
+            
             foreach ($cart->items as $item) {
                 OrderItem::create([
                     'order_id' => $order->id,
@@ -74,7 +74,7 @@ class OrderController extends Controller
                 ]);
             }
             
-            // Clear cart
+            
             CartItem::where('cart_id', $cart->id)->delete();
             
             DB::commit();

@@ -13,7 +13,7 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create a test buyer user
+        
         User::create([
             'username' => 'testbuyer',
             'email' => 'buyer@example.com',
@@ -22,7 +22,7 @@ class UserSeeder extends Seeder
             'image' => 'default.jpg'
         ]);
         
-        // Create a test admin user
+        
         User::create([
             'username' => 'testadmin',
             'email' => 'admin@example.com',

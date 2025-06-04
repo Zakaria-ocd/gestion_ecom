@@ -12,24 +12,56 @@ use App\Models\TypeValue;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Http\JsonResponse;
 
 class CartController extends Controller
 {
     /**
-     * Get the current user's cart items
+     * Get all cart items for the authenticated user
+     *
+     * @param Request $request
+     * @return JsonResponse
      */
     public function index(Request $request)
     {
+        try {
         $user = $request->user();
-        
-        $cart = Cart::firstOrCreate(['user_id' => $user->id]);
-        
-        $cartItems = $this->getFormattedCartItems($cart->id);
+            $cartItems = [];
+            $totalPrice = 0;
+            
+            if ($user && $user->cart) {
+                
+                $items = $user->cart->items()
+                    ->with([
+                        'product', 
+                        'choiceValue',
+                        'choiceValue.typeValues',
+                        'choiceValue.typeValues.type'
+                    ])
+                    ->get();
+                    
+                
+                foreach ($items as $item) {
+                    $detailedItem = $this->getDetailedCartItem($item);
+                    $cartItems[] = $detailedItem;
+                    
+                    
+                    $price = $detailedItem['price'] ?? 0;
+                    $totalPrice += $price * $item->quantity;
+                }
+            }
             
         return response()->json([
+                'status' => 'success',
             'cart_items' => $cartItems,
-            'cart_id' => $cart->id
-        ]);
+                'total_price' => $totalPrice
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to retrieve cart: ' . $e->getMessage()
+            ], 500);
+        }
     }
     
     /**
@@ -41,18 +73,18 @@ class CartController extends Controller
             ->with(['product', 'product.images', 'choiceValue', 'choiceValue.typeValues'])
             ->get()
             ->map(function ($item) {
-                // Get the first image for the product
+                
                 $image = $item->product->images->first();
                 $imageUrl = $image ? url('/api/productImage/' . $item->product->id) : null;
                 
-                // Get choice value details if available
+                
                 $choiceValue = null;
                 $choiceDetails = [];
                 
                 if ($item->choiceValue) {
                     $choiceValue = $item->choiceValue;
                     
-                    // Extract type and value information
+                    
                     foreach ($choiceValue->typeValues as $typeValue) {
                         $choiceDetails[] = [
                             'type' => $typeValue->type->name,
@@ -78,286 +110,462 @@ class CartController extends Controller
     }
     
     /**
-     * Add an item to the cart
+     * Add a product to cart
+     *
+     * @param Request $request
+     * @return JsonResponse
      */
     public function addToCart(Request $request)
     {
-        $validator = Validator::make($request->all(), [
+        try {
+            
+            $validatedData = $request->validate([
             'product_id' => 'required|exists:products,id',
             'quantity' => 'required|integer|min:1',
-            'price' => 'required|numeric|min:0',
-            'choice_value_id' => 'nullable|exists:choice_values,id'
-        ]);
-        
-        if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Validation error',
-                'errors' => $validator->errors()
-            ], 422);
+                'choice_value_id' => 'nullable|exists:choice_values,id',
+            ]);
+
+            
+            $user = $request->user();
+            $cart = $user ? $user->cart : null;
+            
+            if (!$cart) {
+                $cart = Cart::create([
+                    'user_id' => $user ? $user->id : null,
+                    'session_id' => $user ? null : session()->getId()
+                ]);
+                
+                if ($user) {
+                    $user->cart_id = $cart->id;
+                    $user->save();
+                }
+            }
+            
+            
+            $product = Product::find($validatedData['product_id']);
+            if (!$product) {
+                throw new \Exception("Product not found");
         }
         
-        $user = $request->user();
-        $cart = Cart::firstOrCreate(['user_id' => $user->id]);
-        
-        // Check if product with the same choice already exists in cart
-        $query = CartItem::where('cart_id', $cart->id)
-            ->where('product_id', $request->product_id);
             
-        if ($request->has('choice_value_id') && !empty($request->choice_value_id)) {
-            $query->where('choice_value_id', $request->choice_value_id);
+            $price = $product->default_price ?? 0;
+            if (!empty($validatedData['choice_value_id'])) {
+                $choiceValue = ChoiceValue::find($validatedData['choice_value_id']);
+                if ($choiceValue) {
+                    
+                    $price = $choiceValue->price ?: $price;
+                }
+            }
+            
+            
+            $existingItem = CartItem::where('cart_id', $cart->id)
+                ->where('product_id', $validatedData['product_id'])
+                ->where(function($query) use ($validatedData) {
+                    if (isset($validatedData['choice_value_id'])) {
+                        $query->where('choice_value_id', $validatedData['choice_value_id']);
         } else {
             $query->whereNull('choice_value_id');
         }
-        
-        $cartItem = $query->first();
+                })
+                ->first();
+                
             
-        if ($cartItem) {
-            // Update quantity
-            $cartItem->quantity += $request->quantity;
-            $cartItem->save();
+            if ($existingItem) {
+                $existingItem->quantity += $validatedData['quantity'];
+                $existingItem->save();
+                $cartItem = $existingItem;
         } else {
-            // Create new cart item
+                
             $cartItem = CartItem::create([
                 'cart_id' => $cart->id,
-                'product_id' => $request->product_id,
-                'choice_value_id' => !empty($request->choice_value_id) ? $request->choice_value_id : null,
-                'quantity' => $request->quantity,
-                'price' => $request->price,
+                    'product_id' => $validatedData['product_id'],
+                    'quantity' => $validatedData['quantity'],
+                    'choice_value_id' => $validatedData['choice_value_id'] ?? null,
+                    'price' => $price
             ]);
         }
         
-        // Get detailed cart item
-        $cartItemWithDetails = $this->getDetailedCartItem($cartItem);
-        
-        // Get all cart items for a complete response
-        $allCartItems = $this->getFormattedCartItems($cart->id);
+            
+            $detailedItem = $this->getDetailedCartItem($cartItem);
         
         return response()->json([
+                'status' => 'success',
             'message' => 'Product added to cart',
-            'cart_item' => $cartItemWithDetails,
-            'cart_items' => $allCartItems
-        ]);
+                'cart_item' => $detailedItem
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to add product to cart: ' . $e->getMessage()
+            ], 500);
+        }
     }
     
     /**
-     * Get detailed information for a single cart item
+     * Get detailed cart item information for display in frontend
+     * 
+     * @param CartItem $cartItem The cart item to format
+     * @return array Formatted cart item with product details
      */
     private function getDetailedCartItem($cartItem)
     {
-        // Get product details
-        $product = Product::with('images')->find($cartItem->product_id);
-        $image = $product->images->first();
-        $imageUrl = $image ? url('/api/productImage/' . $product->id) : null;
         
-        // Get choice value details if available
-        $choiceValue = null;
-        $choiceDetails = [];
+        if (!$cartItem->relationLoaded('product')) {
+            $cartItem->load('product');
+        }
         
-        if ($cartItem->choice_value_id) {
-            $choiceValue = ChoiceValue::with('typeValues.type')->find($cartItem->choice_value_id);
+        if (!$cartItem->relationLoaded('choiceValue')) {
+            $cartItem->load([
+                'choiceValue', 
+                'choiceValue.typeValues', 
+                'choiceValue.typeValues.type'
+            ]);
+        }
+        
+        
+        $cartItemData = [
+            'id' => $cartItem->id,
+            'product_id' => $cartItem->product_id,
+            'quantity' => $cartItem->quantity,
+            'choice_value_id' => $cartItem->choice_value_id
+        ];
+        
+        
+        if ($cartItem->product) {
+            $cartItemData['product_name'] = $cartItem->product->name;
+            $cartItemData['image'] = url("/api/productImage/{$cartItem->product_id}");
+        
             
-            if ($choiceValue) {
-                // Extract type and value information
-                foreach ($choiceValue->typeValues as $typeValue) {
+            if ($cartItem->choice_value_id && $cartItem->choiceValue && $cartItem->choiceValue->price) {
+                $cartItemData['price'] = $cartItem->choiceValue->price;
+            } else {
+                $cartItemData['price'] = $cartItem->price ?? $cartItem->product->default_price ?? 0;
+            }
+        }
+        
+        
+        $choiceDetails = [];
+        if ($cartItem->choice_value_id && $cartItem->choiceValue) {
+            
+            if (!$cartItem->choiceValue->relationLoaded('typeValues')) {
+                $cartItem->choiceValue->load(['typeValues.type']);
+            }
+            
+            $typeValues = $cartItem->choiceValue->typeValues;
+            
+            if ($typeValues && $typeValues->count() > 0) {
+                foreach ($typeValues as $typeValue) {
+                    
+                    if (!$typeValue->relationLoaded('type')) {
+                        $typeValue->load('type');
+                    }
+                    
+                    
+                    $typeName = $typeValue->type ? $typeValue->type->name : 'Attribute';
+                    
+                    
+                    $colorCode = null;
+                    if ($typeValue->pivot && isset($typeValue->pivot->colorCode)) {
+                        $colorCode = $typeValue->pivot->colorCode;
+                    } else if (isset($typeValue->colorCode)) {
+                        $colorCode = $typeValue->colorCode;
+                    }
+                    
                     $choiceDetails[] = [
-                        'type' => $typeValue->type->name,
+                        'type' => $typeName,
                         'value' => $typeValue->value,
-                        'colorCode' => $typeValue->pivot->colorCode
+                        'colorCode' => $colorCode
                     ];
                 }
             }
         }
         
-        return [
-            'id' => $cartItem->id,
-            'productId' => $cartItem->product_id,
-            'name' => $product->name,
-            'price' => $cartItem->price,
-            'quantity' => $cartItem->quantity,
-            'image' => $imageUrl,
-            'product' => $product,
-            'choiceValue' => $choiceValue,
-            'choiceDetails' => $choiceDetails,
-            'choice_value_id' => $cartItem->choice_value_id
-        ];
+        $cartItemData['choiceDetails'] = $choiceDetails;
+
+        return $cartItemData;
     }
     
     /**
      * Update cart item quantity
+     *
+     * @param Request $request
+     * @return JsonResponse
      */
     public function updateCart(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'cart_item_id' => 'required|exists:cart_items,id',
+        try {
+            $validatedData = $request->validate([
+                'cart_item_id' => 'required|integer',
             'quantity' => 'required|integer|min:1',
         ]);
         
-        if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Validation error',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-        
         $user = $request->user();
-        $cart = Cart::where('user_id', $user->id)->first();
         
-        if (!$cart) {
+            if (!$user || !$user->cart) {
             return response()->json([
+                    'status' => 'error',
                 'message' => 'Cart not found'
             ], 404);
         }
         
-        $cartItem = CartItem::where('id', $request->cart_item_id)
-            ->where('cart_id', $cart->id)
+            
+            $cartItem = CartItem::where('id', $validatedData['cart_item_id'])
+                ->where('cart_id', $user->cart->id)
             ->first();
             
         if (!$cartItem) {
             return response()->json([
-                'message' => 'Cart item not found'
+                    'status' => 'error',
+                    'message' => 'Item not found in cart'
             ], 404);
         }
         
-        $cartItem->quantity = $request->quantity;
+            
+            $cartItem->quantity = $validatedData['quantity'];
         $cartItem->save();
         
-        // Get detailed cart item
-        $cartItemWithDetails = $this->getDetailedCartItem($cartItem);
+            
+            $cartItem->load([
+                'product',
+                'choiceValue',
+                'choiceValue.typeValues.type'
+            ]);
+            
+            
+            $updatedItem = $this->getDetailedCartItem($cartItem);
         
-        // Get all cart items for a complete response
-        $allCartItems = $this->getFormattedCartItems($cart->id);
+            
+            $updatedItems = $user->cart->items()
+                ->with([
+                    'product', 
+                    'choiceValue',
+                    'choiceValue.typeValues',
+                    'choiceValue.typeValues.type'
+                ])
+                ->get()
+                ->map(function($item) {
+                    return $this->getDetailedCartItem($item);
+                });
+            
+            
+            $totalPrice = $updatedItems->sum(function($item) {
+                return ($item['price'] ?? 0) * $item['quantity'];
+            });
         
         return response()->json([
-            'message' => 'Cart updated successfully',
-            'cart_item' => $cartItemWithDetails,
-            'cart_items' => $allCartItems
-        ]);
+                'status' => 'success',
+                'message' => 'Cart updated',
+                'cart_item' => $updatedItem,
+                'cart_items' => $updatedItems,
+                'total_price' => $totalPrice
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to update cart: ' . $e->getMessage()
+            ], 500);
+        }
     }
     
     /**
-     * Remove an item from the cart
+     * Remove an item from cart
+     *
+     * @param Request $request
+     * @return JsonResponse
      */
     public function removeFromCart(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'cart_item_id' => 'required|exists:cart_items,id',
-        ]);
-        
-        if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Validation error',
-                'errors' => $validator->errors()
-            ], 422);
-        }
+        try {
+            $validatedData = $request->validate([
+                'cart_item_id' => 'required|integer',
+                'choice_value_id' => 'nullable|integer'
+            ]);
         
         $user = $request->user();
-        $cart = Cart::where('user_id', $user->id)->first();
         
-        if (!$cart) {
+            if (!$user || !$user->cart) {
             return response()->json([
+                    'status' => 'error',
                 'message' => 'Cart not found'
             ], 404);
         }
         
-        $cartItem = CartItem::where('id', $request->cart_item_id)
-            ->where('cart_id', $cart->id)
-            ->first();
             
-        if (!$cartItem) {
+            $query = CartItem::where('id', $validatedData['cart_item_id'])
+                ->where('cart_id', $user->cart->id);
+            
+            
+            if (isset($validatedData['choice_value_id'])) {
+                $query->where('choice_value_id', $validatedData['choice_value_id']);
+            }
+            
+            
+            $deleted = $query->delete();
+            
+            if (!$deleted) {
             return response()->json([
-                'message' => 'Cart item not found'
+                    'status' => 'error',
+                    'message' => 'Item not found in cart'
             ], 404);
         }
         
-        // Save ID for response
-        $removedItemId = $cartItem->id;
+            
+            $updatedItems = $user->cart->items()
+                ->with([
+                    'product', 
+                    'choiceValue',
+                    'choiceValue.typeValues',
+                    'choiceValue.typeValues.type'
+                ])
+                ->get()
+                ->map(function($item) {
+                    return $this->getDetailedCartItem($item);
+                });
         
-        // Delete the item
-        $cartItem->delete();
-        
-        // Get all remaining cart items
-        $remainingItems = $this->getFormattedCartItems($cart->id);
+            
+            $totalPrice = $updatedItems->sum(function($item) {
+                return ($item['price'] ?? 0) * $item['quantity'];
+            });
         
         return response()->json([
+                'status' => 'success',
             'message' => 'Item removed from cart',
-            'removed_item_id' => $removedItemId,
-            'cart_items' => $remainingItems
-        ]);
+                'cart_items' => $updatedItems,
+                'total_price' => $totalPrice
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to remove item from cart: ' . $e->getMessage()
+            ], 500);
+        }
     }
     
     /**
-     * Merge localStorage cart with database cart
+     * Merge guest cart items with user's cart after login
+     * 
+     * @param Request $request
+     * @return JsonResponse
      */
     public function mergeCart(Request $request)
     {
+        try {
         $validator = Validator::make($request->all(), [
             'items' => 'required|array',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
-            'items.*.price' => 'required|numeric|min:0',
-            'items.*.choice_value_id' => 'nullable|exists:choice_values,id'
+                'items.*.choice_value_id' => 'nullable|exists:choice_values,id',
+                'items.*.price' => 'nullable|numeric|min:0',
         ]);
         
         if ($validator->fails()) {
             return response()->json([
+                    'status' => 'error',
                 'message' => 'Validation error',
                 'errors' => $validator->errors()
             ], 422);
         }
         
         $user = $request->user();
-        $cart = Cart::firstOrCreate(['user_id' => $user->id]);
-        
-        DB::beginTransaction();
-        
-        try {
+            if (!$user) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'User not authenticated'
+                ], 401);
+            }
+            
+            
+            $cart = $user->cart;
+            if (!$cart) {
+                $cart = Cart::create(['user_id' => $user->id]);
+                $user->cart_id = $cart->id;
+                $user->save();
+            }
+            
+            
             foreach ($request->items as $item) {
-                // Check if product with same choice already exists in cart
-                $query = CartItem::where('cart_id', $cart->id)
-                    ->where('product_id', $item['product_id']);
                 
-                if (isset($item['choice_value_id']) && !empty($item['choice_value_id'])) {
+                $product = Product::find($item['product_id']);
+                if (!$product) {
+                    continue; 
+                }
+                
+                
+                $price = $item['price'] ?? null;
+                
+                if (!$price) {
+                    
+                    $price = $product->default_price ?? 0;
+                    
+                    
+                    if (!empty($item['choice_value_id'])) {
+                        $choiceValue = ChoiceValue::find($item['choice_value_id']);
+                        if ($choiceValue && $choiceValue->price) {
+                            $price = $choiceValue->price;
+                        }
+                    }
+                }
+                
+                
+                $existingItem = CartItem::where('cart_id', $cart->id)
+                    ->where('product_id', $item['product_id'])
+                    ->where(function($query) use ($item) {
+                        if (isset($item['choice_value_id'])) {
                     $query->where('choice_value_id', $item['choice_value_id']);
                 } else {
                     $query->whereNull('choice_value_id');
                 }
-                
-                $cartItem = $query->first();
+                    })
+                    ->first();
                     
-                if ($cartItem) {
-                    // Update quantity
-                    $cartItem->quantity += $item['quantity'];
-                    $cartItem->save();
+                if ($existingItem) {
+                    
+                    $existingItem->quantity += $item['quantity'];
+                    $existingItem->save();
                 } else {
-                    // Create new cart item with explicit null for choice_value_id if not set
+                    
                     CartItem::create([
                         'cart_id' => $cart->id,
                         'product_id' => $item['product_id'],
-                        'choice_value_id' => isset($item['choice_value_id']) && !empty($item['choice_value_id']) 
-                            ? $item['choice_value_id'] 
-                            : null,
                         'quantity' => $item['quantity'],
-                        'price' => $item['price'],
+                        'choice_value_id' => $item['choice_value_id'] ?? null,
+                        'price' => $price
                     ]);
                 }
             }
             
-            DB::commit();
             
-            // Return the updated cart with product details
-            $cartItems = $this->getFormattedCartItems($cart->id);
+            $updatedItems = $user->cart->items()
+                ->with([
+                    'product', 
+                    'choiceValue',
+                    'choiceValue.typeValues',
+                    'choiceValue.typeValues.type'
+                ])
+                ->get()
+                ->map(function($item) {
+                    return $this->getDetailedCartItem($item);
+                });
+                
+            
+            $totalPrice = $updatedItems->sum(function($item) {
+                return ($item['price'] ?? 0) * $item['quantity'];
+            });
                 
             return response()->json([
+                'status' => 'success',
                 'message' => 'Cart merged successfully',
-                'cart_items' => $cartItems,
-                'cart_id' => $cart->id
+                'cart_items' => $updatedItems,
+                'total_price' => $totalPrice
             ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
             
+        } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Failed to merge cart',
-                'error' => $e->getMessage()
+                'status' => 'error',
+                'message' => 'Failed to merge cart: ' . $e->getMessage()
             ], 500);
         }
     }

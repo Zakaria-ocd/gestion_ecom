@@ -69,7 +69,7 @@ class AuthController extends Controller
             ], 422);
         }
 
-        // Attempt to authenticate the user
+        
         if (!Auth::attempt($request->only('email', 'password'))) {
             return response()->json([
                 'message' => 'Invalid login credentials'
@@ -78,7 +78,7 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->firstOrFail();
 
-        // Check if user has 'buyer' role
+        
         if ($user->role !== 'buyer') {
             Auth::logout();
             return response()->json([
@@ -86,10 +86,10 @@ class AuthController extends Controller
             ], 403);
         }
 
-        // Revoke all previous tokens
+        
         $user->tokens()->delete();
 
-        // Create new token
+        
         $token = $user->createToken($user->id)->plainTextToken;
 
         return response()->json([

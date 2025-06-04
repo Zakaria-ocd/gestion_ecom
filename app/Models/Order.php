@@ -9,7 +9,7 @@ class Order extends Model
 {
     use HasFactory;
     
-    // Disable timestamps since the table doesn't have updated_at column
+    
     public $timestamps = false;
     
     protected $fillable = [
