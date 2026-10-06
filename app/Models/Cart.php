@@ -10,8 +10,6 @@ class Cart extends Model
     use HasFactory;
 
     protected $fillable = ['user_id'];
-    
-    public $timestamps = false;
 
     /**
      * Get the user that owns the cart.

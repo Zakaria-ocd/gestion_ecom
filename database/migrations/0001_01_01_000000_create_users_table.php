@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('role', 20)->nullable(false)->default('buyer')
                 ->comment('User role: buyer, seller, admin');
             $table->string("image",200)->nullable();
-            $table->timestamp('created_at')->useCurrent();
+            $table->timestamps();
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {

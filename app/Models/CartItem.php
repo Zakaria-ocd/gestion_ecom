@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class CartItem extends Model
 {
     use HasFactory;
-    
+
     /**
      * The attributes that are mass assignable.
      *
@@ -22,7 +22,7 @@ class CartItem extends Model
         'choice_value_id',
         'price',
     ];
-    
+
     /**
      * The relationships that should be eager loaded by default.
      *
@@ -31,14 +31,7 @@ class CartItem extends Model
     protected $with = ['product'];
 
     /**
-     * No timestamps for this model
-     */
-    public $timestamps = false;
-
-    /**
      * Get the cart that owns the item
-     *
-     * @return BelongsTo
      */
     public function cart(): BelongsTo
     {
@@ -47,8 +40,6 @@ class CartItem extends Model
 
     /**
      * Get the product for this cart item
-     *
-     * @return BelongsTo
      */
     public function product(): BelongsTo
     {
@@ -57,8 +48,6 @@ class CartItem extends Model
 
     /**
      * Get the choice value for this cart item
-     *
-     * @return BelongsTo
      */
     public function choiceValue(): BelongsTo
     {

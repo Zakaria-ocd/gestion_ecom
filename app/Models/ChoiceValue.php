@@ -27,23 +27,19 @@ class ChoiceValue extends Model
 
     /**
      * Get the type values associated with this choice value
-     *
-     * @return BelongsToMany
      */
     public function typeValues(): BelongsToMany
-{
+    {
         return $this->belongsToMany(
-            TypeValue::class, 
-            'type_value_choice_value', 
-            'choice_value_id', 
+            TypeValue::class,
+            'type_value_choice_value',
+            'choice_value_id',
             'type_value_id'
-        )->withPivot('colorCode');
-}
+        );
+    }
 
     /**
      * Get the choices that belong to this choice value
-     *
-     * @return HasMany
      */
     public function choices(): HasMany
     {

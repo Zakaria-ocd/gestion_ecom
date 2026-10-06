@@ -8,10 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 class OrderItem extends Model
 {
     use HasFactory;
-    
-    protected $fillable = ['order_id', 'product_id', 'choice_value_id', 'quantity', 'price'];
-    
-    public $timestamps = false;
+
+    protected $fillable = ['order_id', 'product_id', 'choice_value_id', 'quantity', 'price', 'total'];
 
     /**
      * Get the order that owns the item.
@@ -36,4 +34,4 @@ class OrderItem extends Model
     {
         return $this->belongsTo(ChoiceValue::class);
     }
-} 
+}

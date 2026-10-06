@@ -27,8 +27,6 @@ class TypeValue extends Model
 
     /**
      * Get the type that owns this value
-     *
-     * @return BelongsTo
      */
     public function type(): BelongsTo
     {
@@ -37,12 +35,9 @@ class TypeValue extends Model
 
     /**
      * Get the choice values that belong to this type value
-     *
-     * @return BelongsToMany
      */
     public function choiceValues(): BelongsToMany
     {
-        return $this->belongsToMany(ChoiceValue::class, 'type_value_choice_value')
-            ->withPivot('colorCode');
+        return $this->belongsToMany(ChoiceValue::class, 'type_value_choice_value');
     }
 }
