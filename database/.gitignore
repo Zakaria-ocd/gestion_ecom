@@ -1,1 +1,1 @@
-*.sqlite*
+# Intentionally allow database.sqlite to be committed with the demo data.

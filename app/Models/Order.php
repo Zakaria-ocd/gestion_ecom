@@ -8,18 +8,34 @@ use Illuminate\Database\Eloquent\Model;
 class Order extends Model
 {
     use HasFactory;
-    
-    
-    public $timestamps = false;
-    
+
     protected $fillable = [
         'user_id',
-        'total_price',
-        'status',
+        'total_amount',
+        'payment_method',
+        'payment_status',
+        'delivery_status',
         'address',
+        'city',
+        'state',
+        'postal_code',
         'phone',
-        'payment_method'
+        'notes',
+        'recipient_name',
+        'email',
     ];
+
+    protected $appends = ['total_price', 'status'];
+
+    public function getTotalPriceAttribute(): float
+    {
+        return (float) $this->total_amount;
+    }
+
+    public function getStatusAttribute(): string
+    {
+        return $this->delivery_status;
+    }
 
     /**
      * Get the user that owns the order.

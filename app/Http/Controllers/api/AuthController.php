@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
@@ -25,7 +24,7 @@ class AuthController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'Validation error',
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
@@ -34,7 +33,7 @@ class AuthController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'role' => 'buyer',
-            'image' => 'default.jpg'
+            'image' => 'default.jpg',
         ]);
 
         $token = $user->createToken($user->id)->plainTextToken;
@@ -46,9 +45,9 @@ class AuthController extends Controller
                 'username' => $user->username,
                 'email' => $user->email,
                 'role' => $user->role,
-                'image' => $user->image
+                'image' => $user->image,
             ],
-            'token' => $token
+            'token' => $token,
         ], 201);
     }
 
@@ -65,31 +64,25 @@ class AuthController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'Validation error',
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
-        
-        if (!Auth::attempt($request->only('email', 'password'))) {
+        $user = User::where('email', $request->email)->first();
+        if (! $user || ! Hash::check($request->password, $user->password)) {
             return response()->json([
-                'message' => 'Invalid login credentials'
+                'message' => 'Invalid login credentials',
             ], 401);
         }
 
-        $user = User::where('email', $request->email)->firstOrFail();
-
-        
         if ($user->role !== 'buyer') {
-            Auth::logout();
             return response()->json([
-                'message' => 'Access denied. Only buyers can log in through this endpoint.'
+                'message' => 'Access denied. Only buyers can log in through this endpoint.',
             ], 403);
         }
 
-        
         $user->tokens()->delete();
 
-        
         $token = $user->createToken($user->id)->plainTextToken;
 
         return response()->json([
@@ -99,9 +92,9 @@ class AuthController extends Controller
                 'username' => $user->username,
                 'email' => $user->email,
                 'role' => $user->role,
-                'image' => $user->image
+                'image' => $user->image,
             ],
-            'token' => $token
+            'token' => $token,
         ]);
     }
 
@@ -113,7 +106,7 @@ class AuthController extends Controller
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([
-            'message' => 'Successfully logged out'
+            'message' => 'Successfully logged out',
         ]);
     }
 
@@ -123,13 +116,13 @@ class AuthController extends Controller
     public function user(Request $request)
     {
         $user = $request->user();
-        
+
         return response()->json([
             'id' => $user->id,
             'username' => $user->username,
             'email' => $user->email,
             'role' => $user->role,
-            'image' => $user->image
+            'image' => $user->image,
         ]);
     }
-} 
+}
